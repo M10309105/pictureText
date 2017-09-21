@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<!--
+Designed by Francis. 2017/04/15 23:11 Yo!
+-->
+<html>
+    <head>
+        <title>圖片文字產生器</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script type="application/javascript">
+            
+            function draw(){
+                //dim variable
+                var canvas = document.getElementById("picarea");
+                var context = canvas.getContext("2d");
+                var colorR = 255;
+                var colorG = 255;
+                var colorB = 255;
+                var img = new Image();
+                var imgTxt = new Image();   //message img
+                var ImgSizes =[0,0];
+                var currentMousePositions = [0,0];    //message positions
+                //save temp image info
+                var ImgMemento = new Object();
+                ImgMemento.img = img;
+                ImgMemento.imgSize = [0,0];
+                ImgMemento.canvasSize = [0,0];
+
+              //upload image 
+                var upload = document.getElementById("upload_img");
+                upload.addEventListener('change',function(){
+                    if(this.files && this.files[0]){
+                        var fr = new FileReader();
+                        fr.onload = function(){
+                            img.src=fr.result;
+//                            console.log("fr load!!");
+                        }
+                        fr.readAsDataURL(this.files[0]); 
+
+                        img.onload=function(){
+                            imageOnload();
+                        }
+                    }
+                },false);
+                            
+              //if use url to get image
+                var inputURL = document.getElementById("inputURL");
+                inputURL.addEventListener("change", function(){
+                    var imageUrl = inputURL.value;
+                    img.src = imageUrl.replace("..", "");
+                    img.onload = function(){
+                        alert('圖片取得成功!!!');
+                        imageOnload();
+                    }
+                    img.onerror = function(){
+                        alert("圖片取得失敗!!! 你真的是貼圖片網址嗎？");
+                    }
+                    
+              }, false);
+                            
+              //slide change image size
+                var slider = document.getElementById("inputRange");
+                slider.addEventListener('change', function(){
+                    document.getElementById("showRange").innerHTML=slider.value;  //show value
+                    var fontSize = document.getElementById("inputFontRange").value;
+                  // modify
+                    var dWidth = ImgSizes[0]  * slider.value;
+                    var dHeight = ImgSizes[1]  * slider.value;
+                    canvas.width = dWidth;
+                    canvas.height= dHeight;
+//                    console.log("img size"+img.width+","+img.height+" cnavas size:"+canvas.width+","+canvas.height);
+                  //save temp info
+                    ImgMemento.img = img;
+                    ImgMemento.imgSize=[dWidth,dHeight];
+                    ImgMemento.canvasSize = [canvas.width,canvas.height];
+                  // draw 
+                    slideRefresh();
+                }, false);
+                
+              //font slider
+                var fontSlider = document.getElementById("inputFontRange");
+                fontSlider.addEventListener("change", function(){
+                    var fontSize = fontSlider.value;
+                    document.getElementById("showFontRange").innerHTML=fontSize;
+                    slideRefresh();
+                }, false);
+                
+              //color slider
+                var colorRedSlider = document.getElementById("inputColorRed");
+                colorRedSlider.addEventListener("change", function(){
+                    colorR = colorRedSlider.value;
+                    slideRefresh();
+                }, false);
+                var colorGreenSlider = document.getElementById("inputColorGreen");
+                colorGreenSlider.addEventListener("change", function(){
+                    colorG = colorGreenSlider.value;
+                    slideRefresh();
+                }, false);
+                var colorBlueSlider = document.getElementById("inputColorBlue");
+                colorBlueSlider.addEventListener("change", function(){
+                    colorB = colorBlueSlider.value;
+                    slideRefresh();
+                }, false);
+                
+              //if change any parameter , redraw the image
+                function slideRefresh(){
+                    var fontSize = fontSlider.value;
+                    var text = setDefaultTextIfEmpty(document.getElementById("inputText").value);
+                    refreshImage();
+                    checkFontType(context,text,currentMousePositions,fontSize)
+                }
+              
+              //if inputed content , redraw
+                var inputText = document.getElementById("inputText");
+                inputText.addEventListener("change", function(){
+                    console.log("text change");
+                    var text = inputText.value;
+                    var fontSize = document.getElementById("inputFontRange").value;
+                    checkFontType(context,text,currentMousePositions,fontSize);
+                }, false);
+                
+                //phone copy
+                var phoneCopy = document.getElementById("PhoneCopy");
+                phoneCopy.addEventListener("click", function(){
+                     var phoneCopyImg = document.getElementById('appendImg');
+                        phoneCopyImg.src = document.getElementById("picarea").toDataURL();
+                        document.getElementById("append").style.visibility='visible';
+                        alert(document.getElementById("picarea").toDataURL());
+                }, false);
+                
+              //copy , download canvas
+                var copyImg = document.getElementById("CopyImg");
+                copyImg.addEventListener("click", function(){
+                       console.log("copy file");
+                       alert("複製功能維修中");
+//                       document.execCommand('Copy',true,document.getElementById("picarea").toDataURL());
+                        var input = document.createElement('textarea');
+                        document.body.appendChild(input);
+                        input.value = document.getElementById("picarea").toDataURL();
+                        input.focus();
+                        input.select();
+                        document.execCommand('Copy');
+                        input.remove();
+                        
+                }, false);
+                var downloadImg = document.getElementById("DownloadImg");
+                downloadImg.addEventListener("click", function(){
+                    var link = document.createElement("a");
+                    link.download = "yourPic.png";
+                    link.href = document.getElementById("picarea").toDataURL();
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    delete link;
+                    //img.crossOrigin="anonymous"
+                }, false);
+                
+              // refresh image but no text
+                function refreshImage(){
+                    var oriSize = ImgMemento.imgSize;
+                    var oriCanvasSize = ImgMemento.canvasSize;
+                    context.clearRect(0,0,oriCanvasSize[0],oriCanvasSize[1]);
+                    context.drawImage(ImgMemento.img, 0, 0, oriSize[0], oriSize[1]);
+                }
+                
+              // draw vertical text
+                function drawVerticalTxt(context, str, positions, fontSize){
+                    var texts = str.split("");
+                    var tY=positions[1];     //text position
+                    var dY = fontSize*1.2;   //space
+                    refreshImage();
+                    context.font = ""+fontSize+"pt DFKai-sb";
+                    context.fillStyle="rgb("+colorR+","+colorG+","+colorB+")";
+                    context.font="font-family:DFKai-sb";
+                    function foreachT(oneT,index){
+                        context.fillText(oneT,positions[0],tY);
+                        tY+=dY;
+                    }
+                    texts.forEach(foreachT);
+//                    console.log(dY+"drawText font size = "+fontSize);
+                }
+                
+              // draw Horizontal text  
+                function drawHorizontalTxt(context, str, positions, fontSize){
+                    refreshImage();
+                    context.font = ""+fontSize+"pt DFKai-sb";
+                    context.fillStyle="rgb("+colorR+","+colorG+","+colorB+")";
+                    context.font="font-family:DFKai-sb";
+                    context.fillText(str,positions[0],positions[1]);
+                }
+                
+              //set text position  
+                canvas.onmousedown = function(e){    
+                    if(e.button === 0){  //left keydown   2: right
+                        var fontSize = document.getElementById("inputFontRange").value;
+                        var text = setDefaultTextIfEmpty(document.getElementById("inputText").value);
+                        currentMousePositions = getMousePos(canvas,e);
+//                        console.log("mouse down!"+e.x+","+e.y+" in canvas:"+currentMousePositions[0]+","+currentMousePositions[1]);
+                        checkFontType(context, text, currentMousePositions,fontSize);
+                    }
+                    
+                }
+                
+              //radiobox change
+                var radioVertical = document.getElementById("radioVertical");
+                radioVertical.addEventListener("change", function(){
+                     if(radioVertical.checked == true){
+//                        console.log("vertical checked!!");
+                        var text = setDefaultTextIfEmpty(document.getElementById("inputText").value);
+                        var fontSize = document.getElementById("inputFontRange").value;
+                        refreshImage();
+                        drawVerticalTxt(context, text, currentMousePositions, fontSize);
+                    }
+                }, false);
+                var radioHorizontal = document.getElementById("radioHorizontal");
+                radioHorizontal.addEventListener("change", function(){
+                     if(radioHorizontal.checked == true){
+//                        console.log("Horizontal checked!!");
+                        var text = setDefaultTextIfEmpty(document.getElementById("inputText").value);
+                        var fontSize = document.getElementById("inputFontRange").value;
+                        refreshImage();
+                        drawHorizontalTxt(context, text, currentMousePositions, fontSize);
+                    }
+                }, false);
+                
+              //check font type
+                function checkFontType(context,text,currentMousePositions,fontSize){
+                    if(document.getElementById("radioVertical").checked){
+                        drawVerticalTxt(context, text, currentMousePositions, fontSize);
+                    }else{
+                        drawHorizontalTxt(context, text, currentMousePositions, fontSize);
+                    }
+                   
+                }
+                
+              //show the default text if user don't input anything
+                function setDefaultTextIfEmpty(text){
+                    return (text == "")? "文字在這裡" : text;
+                }
+                
+              //get position in canvas
+                function getMousePos(canvas, evt) {
+                    var rect = canvas.getBoundingClientRect();
+                    return [evt.clientX - rect.left, evt.clientY - rect.top];
+                }
+                
+                // modify img size if bigger than window size
+                function checkBorder(width,height){
+                    var minRate = 0.8;   // if want more small ,  set < 1
+                    if(window.innerWidth < width){
+                        var rate = window.innerWidth /width;
+                        return [width*rate*minRate, height*rate*minRate];
+                    }else if (window.innerHeight < height){
+                        var rate = window.innerHeight / height ;
+                        return [width*rate*minRate, height*rate*minRate];
+                    }else{
+                        return [width, height];
+                    }
+                }
+                
+                function imageOnload(){
+                    context.clearRect(0,0,window.innerWidth,window.innerHeight);    //clear canvas
+                    ImgSizes = checkBorder(img.width, img.height);       //set image border size
+                    console.log(ImgSizes[0]+","+ImgSizes[1]+" img:"+img.width+","+img.height);
+                    canvas.width=ImgSizes[0];
+                    canvas.height=ImgSizes[1];
+                    context.drawImage(img, 0, 0, ImgSizes[0], ImgSizes[1]);  //draw upload image
+                    //save image and canvas info
+                    ImgMemento.img = img;
+                    ImgMemento.imgSize=[ImgSizes[0], ImgSizes[1]];
+                    ImgMemento.canvasSize = [ImgSizes[0], ImgSizes[1]];
+                    refreshImage();
+                    
+                   //set default
+                    document.getElementById("inputRange").value=1;
+                    document.getElementById("inputFontRange").value=30;
+                    document.getElementById("showRange").innerHTML="1";
+                    document.getElementById("showFontRange").innerHTML="30";
+                   //hide shoeStep
+                    document.getElementById("showStep").style.display='none';
+                    document.getElementById("finishImg").style.visibility='visible';
+                }
+                
+            }
+        </script>
+    </head>
+    <body onload="draw();">
+        
+         <div align="center">
+            圖片文字產生器<br/>
+            <input type="file" id="upload_img" accept="image/*" />
+            
+            <table id="inputTable">
+                <tr><th>Image URL:</th><td><input type="text" id="inputURL" placeholder="Please input image URL"/></td></tr>
+                <tr><th>Input Text:</th><td><input type="text" id="inputText" placeholder="Please input your context"/></td></tr>
+                <tr><th>Image Size:</th><td><input type="range" id="inputRange" min="0.2" max="2" step="0.2" /><label id="showRange"></label></td></tr>
+                <tr><th>Font Size:</th><td><input type="range" id="inputFontRange" min="5" max="50" step="5" value="30"/><label id="showFontRange"></label></td></tr>
+                <tr><th>Font Color</th><td>
+                        R:<input type="range" id="inputColorRed" min="0" max="255" step="5" value="255"/><label id="showColorRed"></label><br/>
+                        G:<input type="range" id="inputColorGreen" min="0" max="255" step="5" value="255"/><label id="showColorGreen"></label><br/>
+                        B:<input type="range" id="inputColorBlue" min="0" max="255" step="5" value="255"/><label id="showColorBlue"></label>
+                    </td></tr>
+                <tr><th>Font Type</th><td><input type="radio" name="fontType" id="radioVertical" value="Vertical" checked />直書<input type="radio" name="fontType"  id="radioHorizontal" value="Horizontal"/>橫書</td></tr>
+            </table>        
+           
+            <div id="showStep">
+                 <br/>
+                使用教學： <br/>
+                    (1)上傳圖片 OR 輸入圖片網址<br/><br/>
+                    (2)滑鼠點擊圖片設定文字位置<br/><br/>
+                    (3)輸入文字、調整大小<br/><br/>
+                    (4)完成-右鍵複製OR儲存<br/>
+            </div>
+            <canvas id = "picarea"></canvas>
+            <div id="idv_image">
+                 <canvas id = "picarea">瀏覽器不支援喔QQ</canvas>
+                 <div id="finishImg" style="visibility:hidden">
+                    <input type="button" id="PhoneCopy" value="手機複製圖片點此"/> <input type="button" id="CopyImg" value="複製到剪貼簿"/> <input type="button" id="DownloadImg" value="下載" />
+                 </div>
+                 <div id="append" style="visibility:hidden"> 長按下方圖片複製<br/><img id="appendImg"/></div>
+            </div>
+            
+        </div>
+    </body>
+</html>
